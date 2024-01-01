@@ -119,6 +119,8 @@ def unmark_all_tasks():
     save_tasks()
 
 
+
+
 def clear_tasks():
     if messagebox.askyesno("Видалення завдань", "Ви впевнені, що хочете видалити всі завдання?"):
         tasks_listbox.delete(0, tk.END)
@@ -132,14 +134,17 @@ window.title("Todo List")
 #  Шрифт для списку завдань
 custom_font = font.Font(family="Helvetica", size=12, weight="bold")
 
-
 # Основна рамка
 frame = tk.Frame(window)
 frame.pack(fill=tk.BOTH, expand=True)
 
-# Верхня панель для вибору режиму
+# Верхня панель
 top_panel = tk.Frame(frame)
 top_panel.pack(side=tk.TOP, fill=tk.X)
+
+# Права панель для списку виконаних завдань
+right_panel = tk.Frame(frame)
+right_panel.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=10, pady=20)
 
 # Кнопка збереження завдань
 save_button = tk.Button(top_panel, text="Зберегти", font=custom_font, command=save_tasks)
@@ -180,7 +185,6 @@ clear_button.pack(side=tk.TOP, fill=tk.X)
 
 tasks_listbox = tk.Listbox(right_panel, width=100, height=15, font=custom_font)
 tasks_listbox.pack(padx=10, pady=(0, 10), fill=tk.BOTH, expand=True)
-
 
 load_tasks()
 
