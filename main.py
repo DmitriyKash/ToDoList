@@ -40,15 +40,30 @@ def save_tasks():
 
 def add_task():
     task = simpledialog.askstring("Введіть завдання", "Яке завдання ви хочете додати?")
-    if task:
+    category = simpledialog.askstring("Категорія завдання", "Введіть категорію для завдання:")
+    if task and category:
         deadline = simpledialog.askstring("Термін виконання", "Введіть дедлайн (формат: ДД.ММ.РРРР ЧЧ:ММ):")
-        if task and deadline:
-            formatted_task = f"{task} (Дедлайн: {deadline})"
+        if deadline:
+            formatted_task = f"{task} (Категорія: {category}, Дедлайн: {deadline})"
             tasks_listbox.insert(tk.END, formatted_task)
             update_tasks_listbox()
             save_tasks()
-        elif not task:
-            messagebox.showinfo("Помилка", "Завдання не може бути порожнім.")
+    elif not task or not category:
+        messagebox.showinfo("Помилка", "Завдання та категорія не можуть бути порожніми.")
+
+
+def filter_tasks_by_category():
+    category_to_filter = simpledialog.askstring("Фільтр категорій", "Введіть категорію для фільтрації:")
+    if category_to_filter:
+        filtered_tasks = [task for task in tasks_listbox.get(0, tk.END) if f"(Категорія: {category_to_filter}" in task]
+        tasks_listbox.delete(0, tk.END)
+        for task in filtered_tasks:
+            tasks_listbox.insert(tk.END, task)
+
+
+def show_all_tasks():
+    tasks_listbox.delete(0, tk.END)
+    load_tasks()
 
 
 def delete_task():
@@ -119,8 +134,6 @@ def unmark_all_tasks():
     save_tasks()
 
 
-
-
 def clear_tasks():
     if messagebox.askyesno("Видалення завдань", "Ви впевнені, що хочете видалити всі завдання?"):
         tasks_listbox.delete(0, tk.END)
@@ -141,6 +154,14 @@ frame.pack(fill=tk.BOTH, expand=True)
 # Верхня панель
 top_panel = tk.Frame(frame)
 top_panel.pack(side=tk.TOP, fill=tk.X)
+
+filter_button = tk.Button(top_panel, text="Фільтрувати за категорією", font=custom_font,
+                          command=filter_tasks_by_category)
+filter_button.pack(side=tk.TOP, fill=tk.X)
+
+show_all_tasks_button = tk.Button(top_panel, text="Показати всі завдання", font=custom_font,
+                                  command=show_all_tasks)
+show_all_tasks_button.pack(side=tk.TOP, fill=tk.X)
 
 # Права панель для списку виконаних завдань
 right_panel = tk.Frame(frame)
