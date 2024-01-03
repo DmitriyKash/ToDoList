@@ -20,7 +20,6 @@ def setup_treeview():
     tasks_treeview.pack(padx=10, pady=(0, 10), fill=tk.BOTH, expand=True)
 
 
-
 def update_tasks_treeview():
     tasks_treeview.delete(*tasks_treeview.get_children())
     for item in tasks_treeview.get_children():
@@ -93,21 +92,6 @@ def save_tasks():
 
     messagebox.showinfo("Збереження завдань", "Завдання успішно збережено.")
 
-
-# def add_task():
-#     task = simpledialog.askstring("Введіть завдання", "Яке завдання ви хочете додати?")
-#
-#     if task:
-#         deadline = simpledialog.askstring("Термін виконання", "Введіть дедлайн (формат: ДД.ММ.РРРР ЧЧ:ММ):")
-#         if deadline:
-#             deadline_datetime = parse_deadline(f"(Дедлайн: {deadline})")
-#             priority_symbol = get_priority_image(deadline_datetime)
-#             tasks_treeview.insert("", "end", values=(priority_symbol, task, deadline))
-#
-#             save_tasks()
-#
-#     elif not task:
-#         messagebox.showinfo("Помилка", "Завдання та категорія не можуть бути порожніми.")
 
 def add_task():
     task = simpledialog.askstring("Введіть завдання", "Яке завдання ви хочете додати?")
@@ -281,7 +265,6 @@ delete_button.pack(side=tk.TOP, fill=tk.X)
 
 clear_button = tk.Button(left_panel, text="Очистити список", font=custom_font, command=clear_tasks)
 clear_button.pack(side=tk.TOP, fill=tk.X)
-
 
 setup_treeview()
 load_tasks()
