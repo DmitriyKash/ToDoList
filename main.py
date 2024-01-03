@@ -1,24 +1,6 @@
 import tkinter as tk
 from datetime import datetime
-from tkinter import messagebox, simpledialog, PhotoImage, ttk
-import re
-
-
-# def setup_images():
-#     global low_priority_img, medium_priority_img, high_priority_img
-#     low_priority_img = PhotoImage(file="img/1.png")
-#     medium_priority_img = PhotoImage(file="img/2.png")
-#     high_priority_img = PhotoImage(file="img/3.png")
-#
-#
-# def get_priority_image(deadline):
-#     days_left = (deadline - datetime.now()).days
-#     if days_left <= 2:
-#         return high_priority_img
-#     elif days_left <= 5:
-#         return medium_priority_img
-#     else:
-#         return low_priority_img
+from tkinter import messagebox, simpledialog, ttk
 
 
 def setup_treeview():
@@ -38,24 +20,27 @@ def setup_treeview():
     tasks_treeview.pack(padx=10, pady=(0, 10), fill=tk.BOTH, expand=True)
 
 
-# def update_tasks_treeview():
-#     tasks_treeview.delete(*tasks_treeview.get_children())
-#     for task in tasks:
-#         deadline = parse_deadline(task).strftime('%d.%m.%Y %H:%M')  # Форматування дедлайну
-#
-#         img = get_priority_image(deadline)
-#         tasks_treeview.insert("", "end", image=img, values=(task, deadline.strftime('%d.%m.%Y %H:%M')))
 
 def update_tasks_treeview():
     tasks_treeview.delete(*tasks_treeview.get_children())
-    for task in tasks:
-        deadline = parse_deadline(task)
+    for item in tasks_treeview.get_children():
+        # Отримання даних із кожного рядка Treeview
+        task_values = tasks_treeview.item(item, 'values')
+        task_desc, deadline_str = task_values[1], task_values[2]
+
+        # Перетворення строки дедлайну в об'єкт datetime
+        deadline = datetime.strptime(deadline_str, '%d.%m.%Y %H:%M')
+
+        # Визначення символу пріоритету
         priority_symbol = get_priority_image(deadline)
-        tasks_treeview.insert("", "end", values=(get_priority_image, task, deadline.strftime('%d.%m.%Y %H:%M')))
+
+        # Оновлення рядка в Treeview з новим пріоритетом
+        tasks_treeview.item(item, values=(priority_symbol, task_desc, deadline_str))
 
 
 def parse_deadline(deadline_str):
     try:
+        # Переконайтеся, що строка дедлайну відповідає формату 'ДД.ММ.РРРР ЧЧ:ММ'
         return datetime.strptime(deadline_str, '%d.%m.%Y %H:%M')
     except ValueError:
         return datetime.max  # Повертаємо максимально можливу дату, якщо дедлайн не визначено
@@ -109,30 +94,36 @@ def save_tasks():
     messagebox.showinfo("Збереження завдань", "Завдання успішно збережено.")
 
 
+# def add_task():
+#     task = simpledialog.askstring("Введіть завдання", "Яке завдання ви хочете додати?")
+#
+#     if task:
+#         deadline = simpledialog.askstring("Термін виконання", "Введіть дедлайн (формат: ДД.ММ.РРРР ЧЧ:ММ):")
+#         if deadline:
+#             deadline_datetime = parse_deadline(f"(Дедлайн: {deadline})")
+#             priority_symbol = get_priority_image(deadline_datetime)
+#             tasks_treeview.insert("", "end", values=(priority_symbol, task, deadline))
+#
+#             save_tasks()
+#
+#     elif not task:
+#         messagebox.showinfo("Помилка", "Завдання та категорія не можуть бути порожніми.")
+
 def add_task():
     task = simpledialog.askstring("Введіть завдання", "Яке завдання ви хочете додати?")
 
     if task:
         deadline = simpledialog.askstring("Термін виконання", "Введіть дедлайн (формат: ДД.ММ.РРРР ЧЧ:ММ):")
         if deadline:
-            deadline_datetime = parse_deadline(f"(Дедлайн: {deadline})")
+            # Видаляємо непотрібну частину "(Дедлайн: " і ")"
+            deadline_datetime = parse_deadline(deadline)
             priority_symbol = get_priority_image(deadline_datetime)
             tasks_treeview.insert("", "end", values=(priority_symbol, task, deadline))
+
             save_tasks()
+
     elif not task:
-        messagebox.showinfo("Помилка", "Завдання та категорія не можуть бути порожніми.")
-
-
-def filter_tasks_by_category():
-    global tasks
-    category_to_filter = simpledialog.askstring("Фільтр категорій", "Введіть категорію для фільтрації:")
-    if category_to_filter:
-        filtered_tasks = [task for task in tasks if f"(Категорія: {category_to_filter}" in task]
-        tasks_treeview.delete(*tasks_treeview.get_children())
-        for i, task in enumerate(filtered_tasks, start=1):
-            deadline = parse_deadline(task)
-            priority_symbol = get_priority_image(deadline)
-            tasks_treeview.insert("", "end", values=(priority_symbol, f"{i}. {task}"))
+        messagebox.showinfo("Помилка", "Завдання не може бути порожнім.")
 
 
 def show_all_tasks():
@@ -219,16 +210,11 @@ def unmark_all_tasks():
     save_tasks()
 
 
-# def clear_tasks():
-#     if messagebox.askyesno("Очищення списку завдань", "Ви впевнені, що хочете очистити весь список?"):
-#         tasks_treeview.delete(*tasks_treeview.get_children())
-#
-#         update_tasks_treeview()
-
 def clear_tasks():
     if messagebox.askyesno("Очищення списку завдань", "Ви впевнені, що хочете очистити весь список?"):
         tasks_treeview.delete(*tasks_treeview.get_children())
         save_tasks()
+
 
 # Створення вікна
 window = tk.Tk()
@@ -254,10 +240,6 @@ custom_font = ("Arial", 14, "bold")
 # Верхня панель
 top_panel = tk.Frame(frame)
 top_panel.pack(side=tk.TOP, fill=tk.X)
-
-filter_button = tk.Button(top_panel, text="Фільтрувати за категорією", font=custom_font,
-                          command=filter_tasks_by_category)
-filter_button.pack(side=tk.TOP, fill=tk.X)
 
 show_all_tasks_button = tk.Button(top_panel, text="Показати всі завдання", font=custom_font,
                                   command=show_all_tasks)
@@ -300,8 +282,6 @@ delete_button.pack(side=tk.TOP, fill=tk.X)
 clear_button = tk.Button(left_panel, text="Очистити список", font=custom_font, command=clear_tasks)
 clear_button.pack(side=tk.TOP, fill=tk.X)
 
-# tasks_listbox = tk.Listbox(right_panel, width=100, height=15, font=custom_font)
-# tasks_listbox.pack(padx=10, pady=(0, 10), fill=tk.BOTH, expand=True)
 
 setup_treeview()
 load_tasks()
