@@ -43,7 +43,6 @@ def add_task():
             save_tasks()
 
 
-
 def edit_task():
     selected_task = listbox.curselection()
     if selected_task:
@@ -146,7 +145,6 @@ def check_for_notifications():
                     message=f"У вас є завдання з дедлайном сьогодні: {task}",
                     app_name="ToDo List"
                 )
-
 
 
 def main():
