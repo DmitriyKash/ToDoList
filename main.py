@@ -1,273 +1,185 @@
 import tkinter as tk
-from datetime import datetime
-from tkinter import messagebox, simpledialog, ttk
+from tkinter import messagebox, simpledialog
+import tkinter.simpledialog as sd
+from todo_list import ToDoList
+from plyer import notification
+from datetime import datetime, date
+from tkinter import PhotoImage
+import datetime
 
 
-def setup_treeview():
-    global tasks_treeview
-    tasks_treeview = ttk.Treeview(right_panel)
-    tasks_treeview["columns"] = ("priority", "task", "deadline")
-    tasks_treeview.column("#0", width=0, stretch=tk.NO)
-    tasks_treeview.column("priority", width=70, anchor=tk.CENTER)
-    tasks_treeview.column("deadline", width=100, anchor=tk.CENTER)
-    tasks_treeview.column("task", width=300, anchor=tk.W)
+class DateEntry(sd.Dialog):
+    def body(self, master):
+        self.date_entry = tk.Entry(master)
+        self.date_entry.pack()
+        return self.date_entry
 
-    tasks_treeview.heading("#0", text="", anchor=tk.CENTER)
-    tasks_treeview.heading("priority", text="Priority", anchor=tk.CENTER)
-    tasks_treeview.heading("task", text="Task", anchor=tk.CENTER)
-    tasks_treeview.heading("deadline", text="Deadline", anchor=tk.CENTER)
-
-    tasks_treeview.pack(padx=10, pady=(0, 10), fill=tk.BOTH, expand=True)
-
-
-def update_tasks_treeview():
-    tasks_treeview.delete(*tasks_treeview.get_children())
-    for item in tasks_treeview.get_children():
-        # Отримання даних із кожного рядка Treeview
-        task_values = tasks_treeview.item(item, 'values')
-        task_desc, deadline_str = task_values[1], task_values[2]
-
-        # Перетворення строки дедлайну в об'єкт datetime
-        deadline = datetime.strptime(deadline_str, '%d.%m.%Y %H:%M')
-
-        # Визначення символу пріоритету
-        priority_symbol = get_priority_image(deadline)
-
-        # Оновлення рядка в Treeview з новим пріоритетом
-        tasks_treeview.item(item, values=(priority_symbol, task_desc, deadline_str))
-
-
-def parse_deadline(deadline_str):
-    try:
-        # Переконайтеся, що строка дедлайну відповідає формату 'ДД.ММ.РРРР ЧЧ:ММ'
-        return datetime.strptime(deadline_str, '%d.%m.%Y %H:%M')
-    except ValueError:
-        return datetime.max  # Повертаємо максимально можливу дату, якщо дедлайн не визначено
-
-
-def get_priority_image(deadline):
-    days_left = (deadline - datetime.now()).days
-    if days_left <= 2:
-        return "Високий"  # Червоний колір для високого пріоритету
-    elif days_left <= 5:
-        return "Середній"  # Жовтий колір для середнього пріоритету
-    else:
-        return "Низький"  # Зелений колір для низького пріоритету
-
-
-def load_tasks():
-    try:
-        with open("tasks.txt", "r", encoding="utf-8") as file:
-            tasks = file.readlines()
-
-        tasks_treeview.delete(*tasks_treeview.get_children())  # Очищення Treeview перед завантаженням нових даних
-
-        for task in tasks:
-            task = task.strip()
-            # Розбиття рядка на окремі частини
-            task_parts = task.split(' (')
-            task_desc = task_parts[0]
-            priority_part = task_parts[1].split(', ')[0]
-            deadline_part = task_parts[1].split(', ')[1].rstrip(')')
-
-            # Вилучення пріоритету та дедлайну
-            priority = priority_part.split(': ')[1]
-            deadline = deadline_part.split(': ')[1]
-
-            # Додавання завдання у Treeview
-            tasks_treeview.insert("", "end", values=(priority, task_desc, deadline))
-
-    except FileNotFoundError:
-        pass
+    def apply(self):
+        self.result = self.date_entry.get()
 
 
 def save_tasks():
-    with open("tasks.txt", "w", encoding="utf-8") as file:
-        for item in tasks_treeview.get_children():
-            # Витягування даних із кожного рядка Treeview
-            priority, task, deadline = tasks_treeview.item(item, 'values')
-            # Форматування рядка для збереження у файл
-            task_str = f"{task} (Priority: {priority}, Deadline: {deadline})"
-            file.write(task_str + "\n")
+    todo_list.save_to_file("tasks.json")
 
-    messagebox.showinfo("Збереження завдань", "Завдання успішно збережено.")
+
+def load_tasks():
+    todo_list.load_from_file("tasks.json")
 
 
 def add_task():
-    task = simpledialog.askstring("Введіть завдання", "Яке завдання ви хочете додати?")
-
+    task = simpledialog.askstring("Введіть завдання", "Назва завдання:")
     if task:
-        deadline = simpledialog.askstring("Термін виконання", "Введіть дедлайн (формат: ДД.ММ.РРРР ЧЧ:ММ):")
-        if deadline:
-            # Видаляємо непотрібну частину "(Дедлайн: " і ")"
-            deadline_datetime = parse_deadline(deadline)
-            priority_symbol = get_priority_image(deadline_datetime)
-            tasks_treeview.insert("", "end", values=(priority_symbol, task, deadline))
-
-            save_tasks()
-
-    elif not task:
-        messagebox.showinfo("Помилка", "Завдання не може бути порожнім.")
-
-
-def show_all_tasks():
-    load_tasks()
-
-
-def delete_task():
-    try:
-        selected_item = tasks_treeview.selection()[0]  # Вибране завдання в Treeview
-        if messagebox.askyesno("Видалення завдання", "Ви впевнені, що хочете видалити це завдання?"):
-            # Видалення завдання з Treeview
-            tasks_treeview.delete(selected_item)
-            save_tasks()
-    except IndexError:
-        messagebox.showinfo("Помилка", "Виберіть завдання для видалення.")
+        priority = simpledialog.askinteger("Пріоритет", "Встановіть пріоритет (1-5):", minvalue=1, maxvalue=5)
+        deadline = DateEntry(root).result
+        if priority is not None and deadline:
+            formatted_task = f"[Пріоритет: {priority}] {task} (дедлайн: {deadline})"
+            todo_list.add_task(formatted_task)
+            update_tasks_display()
 
 
 def edit_task():
-    try:
-        selected_item = tasks_treeview.selection()[0]  # Вибране завдання в Treeview
-        selected_task_values = tasks_treeview.item(selected_item, "values")
-        # Важливо витягувати дані у відповідності зі структурою колонок Treeview
-        priority, task_desc, deadline = selected_task_values
-
-        # Запитуємо оновлені дані
-        new_desc = simpledialog.askstring("Редагувати завдання", "Змінити опис завдання:", initialvalue=task_desc)
-        new_deadline = simpledialog.askstring("Редагувати завдання", "Змінити дедлайн завдання:", initialvalue=deadline)
-
-        if new_desc and new_deadline:
-            # Оновлення даних у Treeview
-            tasks_treeview.item(selected_item, values=(priority, new_desc, new_deadline))
-            save_tasks()
-    except IndexError:
-        messagebox.showinfo("Помилка", "Виберіть завдання для редагування.")
+    selected_task = listbox.curselection()
+    if selected_task:
+        current_task = listbox.get(selected_task)
+        new_task = simpledialog.askstring("Редагувати завдання", "Нова назва завдання:", initialvalue=current_task)
+        if new_task:
+            todo_list.edit_task(current_task, new_task)
+            update_tasks_display()
+    else:
+        messagebox.showwarning("Попередження", "Будь ласка, виберіть завдання для редагування.")
 
 
-def mark_task():
-    try:
-        selected_item = tasks_treeview.selection()[0]
-        task_values = tasks_treeview.item(selected_item, "values")
-        updated_task = "[Виконано] " if not task_values[0].startswith("[Виконано] ") else task_values[0]
-        tasks_treeview.item(selected_item, values=(updated_task, task_values[1], task_values[2]))
-        save_tasks()
-    except IndexError:
-        messagebox.showinfo("Помилка", "Виберіть завдання для відмітки.")
+def update_tasks_display():
+    listbox.delete(0, tk.END)
+    for task in todo_list.tasks:
+        if "[Пріоритет: 1]" in task:
+            listbox.insert(tk.END, task)
+            listbox.itemconfig(tk.END, {'bg': 'red'})
+        elif "[Пріоритет: 2]" in task:
+            listbox.insert(tk.END, task)
+            listbox.itemconfig(tk.END, {'bg': 'orange'})
+        elif "[Пріоритет: 3]" in task:
+            listbox.insert(tk.END, task)
+            listbox.itemconfig(tk.END, {'bg': 'yellow'})
+        elif "[Пріоритет: 4]" in task:
+            listbox.insert(tk.END, task)
+            listbox.itemconfig(tk.END, {'bg': 'green'})
+        elif "[Пріоритет: 5]" in task:
+            listbox.insert(tk.END, task)
+            listbox.itemconfig(tk.END, {'bg': 'blue'})
+    for task in todo_list.tasks:
+        listbox.insert(tk.END, task)
 
 
-def unmark_task():
-    try:
-        selected_item = tasks_treeview.selection()[0]
-        task_values = tasks_treeview.item(selected_item, "values")
-        task_desc = task_values[1][11:] if task_values[1].startswith("[Виконано] ") else task_values[1]
-        deadline_str = task_values[2]
-
-        # Визначення пріоритету знову виходячи з дедлайну
-        deadline = datetime.strptime(deadline_str, '%d.%m.%Y %H:%M')
-        new_priority_symbol = get_priority_image(deadline)
-
-        # Оновлення завдання у Treeview
-        tasks_treeview.item(selected_item, values=(new_priority_symbol, task_desc, deadline_str))
-        save_tasks()
-    except IndexError:
-        messagebox.showinfo("Помилка", "Виберіть завдання для зняття відмітки.")
+def search_tasks():
+    search_query = simpledialog.askstring("Пошук завдань", "Введіть ключове слово для пошуку:")
+    if search_query:
+        matching_tasks = [task for task in todo_list.tasks if search_query.lower() in task.lower()]
+        listbox.delete(0, tk.END)
+        for task in matching_tasks:
+            listbox.insert(tk.END, task)
 
 
-def mark_all_tasks():
-    for item in tasks_treeview.get_children():
-        task_values = tasks_treeview.item(item, "values")
-        if not task_values[0].startswith("[Виконано] "):
-            updated_priority = "[Виконано] " + task_values[0]
-            tasks_treeview.item(item, values=(updated_priority, task_values[1], task_values[2]))
+def remove_task():
+    selected_task = listbox.curselection()
+    if selected_task:
+        task = listbox.get(selected_task)
+        todo_list.remove_task(task)
+        update_tasks_display()
+    else:
+        messagebox.showwarning("Попередження", "Будь ласка, виберіть завдання для видалення.")
+
+
+def update_tasks_display():
+    listbox.delete(0, tk.END)
+    for task in todo_list.tasks:
+        listbox.insert(tk.END, task)
+
+
+def save_tasks():
+    todo_list.save_to_file("tasks.json")
+    messagebox.showinfo("Інформація", "Завдання успішно збережені.")
+
+
+def load_tasks():
+    todo_list.load_from_file("tasks.json")
+
+
+def on_closing():
+    global root
     save_tasks()
+    root.destroy()
 
 
-def unmark_all_tasks():
-    for item in tasks_treeview.get_children():
-        task_values = tasks_treeview.item(item, "values")
-        if task_values[0].startswith("[Виконано] "):
-            updated_priority = task_values[0][11:]
-            deadline_str = task_values[2]
-            deadline = datetime.strptime(deadline_str, '%d.%m.%Y %H:%M')
-            new_priority_symbol = get_priority_image(deadline)
-            tasks_treeview.item(item, values=(new_priority_symbol, task_values[1], deadline_str))
-    save_tasks()
+def filter_tasks():
+    priority = simpledialog.askstring("Фільтр завдань за пріоритетом", "Введіть пріоритет (наприклад, 3):")
+    if priority:
+        filtered_tasks = [task for task in todo_list.tasks if f"[Пріоритет: {priority.strip()}]" in task]
+        listbox.delete(0, tk.END)
+        for task in filtered_tasks:
+            listbox.insert(tk.END, task)
 
 
-def clear_tasks():
-    if messagebox.askyesno("Очищення списку завдань", "Ви впевнені, що хочете очистити весь список?"):
-        tasks_treeview.delete(*tasks_treeview.get_children())
-        save_tasks()
+def show_all_tasks():
+    update_tasks_display()
 
 
-# Створення вікна
-window = tk.Tk()
-window.title("Todo List")
+def check_for_notifications():
+    today = date.today()
+    for task in todo_list.tasks:
 
-# setup_images()
+        if "дедлайн:" in task:
+            deadline = task.split("дедлайн: ")[-1].split(")")[0]
+            deadline_date = datetime.datetime.strptime(deadline, "%d.%m.%Y").date()
+            if deadline_date == today:
+                notification.notify(
+                    title="Нагадування про завдання",
+                    message=f"У вас є завдання з дедлайном сьогодні: {task}",
+                    app_name="ToDo List"
+                )
 
-# Основна рамка
-frame = tk.Frame(window)
-frame.pack(fill=tk.BOTH, expand=True)
 
-# Ліва панель для кнопок
-left_panel = tk.Frame(frame)
-left_panel.pack(side=tk.LEFT, padx=10, pady=10, fill=tk.Y)
+def main():
+    global listbox, todo_list, root
+    todo_list = ToDoList()
+    load_tasks()
 
-# Права панель для Treeview
-right_panel = tk.Frame(frame)
-right_panel.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+    root = tk.Tk()
+    root.title("ToDo List")
 
-# Шрифти
-custom_font = ("Arial", 14, "bold")
+    # Додавання міток та вдосконалення розташування
+    frame = tk.Frame(root)
+    frame.pack(pady=10)
 
-# Верхня панель
-top_panel = tk.Frame(frame)
-top_panel.pack(side=tk.TOP, fill=tk.X)
+    tk.Label(frame, text="Ваші завдання:").pack(side=tk.TOP)
+    listbox = tk.Listbox(frame, height=10, width=50)
+    listbox.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
-show_all_tasks_button = tk.Button(top_panel, text="Показати всі завдання", font=custom_font,
-                                  command=show_all_tasks)
-show_all_tasks_button.pack(side=tk.TOP, fill=tk.X)
+    btn_frame = tk.Frame(root)
+    btn_frame.pack(pady=10)
 
-# Кнопка збереження завдань
-save_button = tk.Button(top_panel, text="Зберегти", font=custom_font, command=save_tasks)
-save_button.pack(side=tk.RIGHT, padx=10, pady=10)
+    add_icon = PhotoImage(file="img/add_task.png")
+    edit_icon = PhotoImage(file="img/edit_task.png")
+    delete_icon = PhotoImage(file="img/delete_task.png")
 
-# Ліва панель для кнопок
-left_panel = tk.Frame(frame)
-left_panel.pack(side=tk.LEFT, padx=10, pady=10, fill=tk.Y)
+    tk.Button(btn_frame, image=add_icon, command=add_task).pack(side=tk.LEFT)
+    tk.Button(btn_frame, image=edit_icon, command=edit_task).pack(side=tk.LEFT)
+    tk.Button(btn_frame, image=delete_icon, command=remove_task).pack(side=tk.LEFT)
 
-# Права панель для списку завдань
-right_panel = tk.Frame(frame)
-right_panel.pack(side=tk.LEFT, padx=10, pady=10, fill=tk.BOTH, expand=True)
+    tk.Button(root, text="Зберегти завдання", command=save_tasks).pack(pady=5)
+    tk.Button(root, text="Фільтр завдань", command=filter_tasks).pack(pady=5)
+    tk.Button(root, text="Показати всі завдання", command=show_all_tasks).pack(pady=5)
 
-# Кнопки (розташування у лівій панелі)
-add_button = tk.Button(left_panel, text="Додати завдання", font=custom_font, command=add_task)
-add_button.pack(side=tk.TOP, fill=tk.X)
+    search_button = tk.Button(root, text="Пошук завдань", command=search_tasks)
+    search_button.pack(pady=5)
 
-edit_button = tk.Button(left_panel, text="Редагувати завдання", font=custom_font, command=edit_task)
-edit_button.pack(side=tk.TOP, fill=tk.X)
+    root.protocol("WM_DELETE_WINDOW", on_closing)
 
-mark_button = tk.Button(left_panel, text="Відмітити як виконане", font=custom_font, command=mark_task)
-mark_button.pack(side=tk.TOP, fill=tk.X)
+    update_tasks_display()
+    check_for_notifications()
 
-mark_all_button = tk.Button(left_panel, text="Відмітити всі завдання", font=custom_font, command=mark_all_tasks)
-mark_all_button.pack(side=tk.TOP, fill=tk.X)
+    root.mainloop()
 
-unmark_button = tk.Button(left_panel, text="Зняти відмітку", font=custom_font, command=unmark_task)
-unmark_button.pack(side=tk.TOP, fill=tk.X)
 
-unmark_all_button = tk.Button(left_panel, text="Зняти всі відмітки", font=custom_font, command=unmark_all_tasks)
-unmark_all_button.pack(side=tk.TOP, fill=tk.X)
-
-delete_button = tk.Button(left_panel, text="Видалити завдання", font=custom_font, command=delete_task)
-delete_button.pack(side=tk.TOP, fill=tk.X)
-
-clear_button = tk.Button(left_panel, text="Очистити список", font=custom_font, command=clear_tasks)
-clear_button.pack(side=tk.TOP, fill=tk.X)
-
-setup_treeview()
-load_tasks()
-
-# Запуск головного циклу
-window.mainloop()
+if __name__ == "__main__":
+    main()
