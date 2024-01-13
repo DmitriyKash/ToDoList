@@ -3,10 +3,13 @@ from tkinter import messagebox, simpledialog
 import tkinter.simpledialog as sd
 from todo_list import ToDoList
 from plyer import notification
-from datetime import datetime, date
+from datetime import datetime, timedelta
+from datetime import date
 from tkinter import PhotoImage
-import datetime
 from tkinter import ttk
+
+
+# import datetime
 
 
 class DateEntry(sd.Dialog):
@@ -31,13 +34,12 @@ def add_task():
     task = simpledialog.askstring("Введіть завдання", "Назва завдання:")
     if task and len(task) > 150:
         messagebox.showwarning("Попередження", "Довжина завдання не може перевищувати 30 символів.")
-        return  # Повертаємось з функції, не додаючи завдання
+        return
 
     if task:
-        priority = simpledialog.askinteger("Пріоритет", "Встановіть пріоритет (1-5):", minvalue=1, maxvalue=5)
         deadline = DateEntry(root).result
-        if priority is not None and deadline:
-            formatted_task = f"[Пріоритет: {priority}] {task} (дедлайн: {deadline})"
+        if deadline:
+            formatted_task = f"{task} (дедлайн: {deadline})"
             todo_list.add_task(formatted_task)
             update_tasks_display()
             save_tasks()
@@ -57,24 +59,25 @@ def edit_task():
 
 def update_tasks_display():
     listbox.delete(0, tk.END)
+    today = datetime.today().date()  # Отримання поточної дати як datetime.date
+
     for task in todo_list.tasks:
-        if "[Пріоритет: 1]" in task:
-            listbox.insert(tk.END, task)
-            listbox.itemconfig(tk.END, {'bg': 'red'})
-        elif "[Пріоритет: 2]" in task:
-            listbox.insert(tk.END, task)
-            listbox.itemconfig(tk.END, {'bg': 'orange'})
-        elif "[Пріоритет: 3]" in task:
-            listbox.insert(tk.END, task)
-            listbox.itemconfig(tk.END, {'bg': 'yellow'})
-        elif "[Пріоритет: 4]" in task:
-            listbox.insert(tk.END, task)
-            listbox.itemconfig(tk.END, {'bg': 'green'})
-        elif "[Пріоритет: 5]" in task:
-            listbox.insert(tk.END, task)
-            listbox.itemconfig(tk.END, {'bg': 'blue'})
-    for task in todo_list.tasks:
+        deadline_str = task.split("дедлайн: ")[-1].split(")")[0]
+        deadline = datetime.strptime(deadline_str, "%d.%m.%Y").date()  # Конвертування строки у datetime.date
+        delta = deadline - today  # Віднімання дат
+
+        # Логіка кольорового кодування
+        if delta < timedelta(days=0):
+            color = 'red'  # Пропущений дедлайн
+        elif delta <= timedelta(days=3):
+            color = 'orange'  # Дедлайн протягом наступних 3 днів
+        elif delta <= timedelta(days=7):
+            color = 'yellow'  # Дедлайн протягом наступного тижня
+        else:
+            color = 'green'  # Дедлайн більше ніж через тиждень
+
         listbox.insert(tk.END, task)
+        listbox.itemconfig(tk.END, {'bg': color})
 
 
 def search_tasks():
@@ -94,12 +97,6 @@ def remove_task():
         update_tasks_display()
     else:
         messagebox.showwarning("Попередження", "Будь ласка, виберіть завдання для видалення.")
-
-
-def update_tasks_display():
-    listbox.delete(0, tk.END)
-    for task in todo_list.tasks:
-        listbox.insert(tk.END, task)
 
 
 def save_tasks():
@@ -135,10 +132,9 @@ def show_all_tasks():
 def check_for_notifications():
     today = date.today()
     for task in todo_list.tasks:
-
         if "дедлайн:" in task:
             deadline = task.split("дедлайн: ")[-1].split(")")[0]
-            deadline_date = datetime.datetime.strptime(deadline, "%d.%m.%Y").date()
+            deadline_date = datetime.strptime(deadline, "%d.%m.%Y").date()
             if deadline_date == today:
                 notification.notify(
                     title="Нагадування про завдання",
@@ -147,8 +143,18 @@ def check_for_notifications():
                 )
 
 
+def sort_tasks(event):
+    selected_sort = sort_dropdown.get()
+    if selected_sort == "За дедлайном":
+        todo_list.tasks.sort(key=lambda x: datetime.strptime(x.split("дедлайн: ")[-1].split(")")[0], "%d.%m.%Y"))
+    elif selected_sort == "Алфавітний порядок":
+        todo_list.tasks.sort()
+
+    update_tasks_display()
+
+
 def main():
-    global listbox, todo_list, root, dropdown
+    global listbox, todo_list, root, dropdown, sort_dropdown
     todo_list = ToDoList()
     load_tasks()
 
@@ -186,12 +192,14 @@ def main():
 
     tk.Button(root, text="Зберегти завдання", command=save_tasks).pack(pady=5)
 
-    label = tk.Label(btn_frame, text="Фільтр завдань за пріоритетом:")
+    label = tk.Label(btn_frame, text="Фільтр завдань:")
     label.pack(pady=(0, 0))
-    dropdown = ttk.Combobox(btn_frame, height=10, width=10, values=["Всі", "1", "2", "3", "4", "5"])
-    dropdown.pack(pady=5)
-    dropdown.bind("<<ComboboxSelected>>", filter_tasks)
-    dropdown.set("Всі")
+    sort_options = ["За дедлайном", "Алфавітний порядок"]
+    sort_dropdown = ttk.Combobox(btn_frame, values=sort_options)
+    # sort_dropdown.set("")  # Значення за замовчуванням
+    sort_dropdown.pack(pady=5)
+    sort_dropdown.bind("<<ComboboxSelected>>", sort_tasks)
+
     tk.Button(btn_frame, text="Показати всі завдання", command=show_all_tasks).pack(pady=5)
 
     search_button = tk.Button(btn_frame, text="Пошук завдань", command=search_tasks)
